@@ -65,6 +65,7 @@ class Game {
 
   async pickWord() {
     
+    wordsGuessed = []
     var words = [];
     var pickedWordDBRef = await database.ref('drawings/canvas/word').once("value");
     // listen to the change in the word to guess
@@ -79,9 +80,12 @@ class Game {
       if (gameState === 2)
         form.createFreshTable();
       wordsGuessed.forEach(guess => form.addGuessToOutputTable(guess.player, guess.word));
-      console.log('wordsGuessed:', wordsGuessed);
-      console.log('guessTimeElapsed:', guessTimeElapsed)
-      guessTimeElapsed = 0;
+      // console.log('wordsGuessed:', wordsGuessed);
+      // console.log('guessTimeElapsed:', guessTimeElapsed)
+      if (wordsGuessed && wordsGuessed.length > 0 && wordsGuessed[wordsGuessed.length - 1].word.toLowerCase() === drawingWord.toLowerCase()) { 
+        guessTimeElapsed = 0;
+        Form.cleanCanvas();
+      }
     });
     if (!pickedWordDBRef.exists() || (pickedWordDBRef.exists() && pickedWordDBRef.val() === pickedWordDefault)) {
       var wordsRef = await database.ref('words').once("value");
@@ -126,12 +130,11 @@ class Game {
 
   
   async roundTimeup() {
+    Form.cleanCanvas();
     this.resetPickedWord();
     if (currentRound >= maxRounds && notYetArtist.length === 0) {
-      Form.cleanCanvas();
       Game.update(3);
     }
-    wordsGuessed = []
     wordsGuessed.push({ player: player.name, word: 'times up.....' });
     await database.ref('/drawings/canvas/').update({ wordsGuessed: wordsGuessed });
     this.nextPlayersTurnToDraw();
@@ -185,7 +188,6 @@ class Game {
   }
 
   static changePlayerRole(players) {
-    // console.log("init now");
     allPlayers.forEach(p => { p.type = (players.find(up => up.id === p.id)) ? players.find(up => up.id === p.id).type : Player.playerRoles.guesser; })
     notYetArtist = players.filter(p => p.type === Player.playerRoles.guesser);
     database.ref("/").update({ roundInfo: { Round: currentRound, notYetArtist: notYetArtist } });
@@ -227,8 +229,8 @@ class Game {
         // capture drawing in desktop browser
         if (!(mouseX < colorWheel.width && mouseY < colorWheel.height)) {
           point = {
-            x: mouseX,
-            y: mouseY,
+            x:  map(mouseX, 0, windowWidth, 0, 100),
+            y: map(mouseY, 0, windowWidth, 0, 100),
             color: lineColor
           };
         }
@@ -245,8 +247,8 @@ class Game {
             beginShape();
             for (var j = 0; j < path.length; j++) {
               stroke(path[j].color);
-              var mapX = map(path[j].x, 0, artistCanvasWidth, 0, windowWidth)
-              var mapY = map(path[j].y, 0, artistCanvasWidth, 0, windowWidth)
+              var mapX = map(path[j].x, 0, 100, 0, windowWidth)
+              var mapY = map(path[j].y, 0, 100, 0, windowWidth)
               vertex(mapX, mapY);
             }
             endShape();
@@ -276,13 +278,13 @@ class Game {
       this.nextRound();
     }
   }
-  nextRound() {
-    console.log('in Next round');
-    database.ref("/roundInfo").update({ Round: currentRound, notYetArtist: (notYetArtist) ? notYetArtist : 0 });
+  async nextRound() {
+    console.log('in Next round', { Round: currentRound, notYetArtist: (notYetArtist) ? notYetArtist : 0 });
+    await database.ref("/roundInfo").update({ Round: currentRound, notYetArtist: (notYetArtist) ? notYetArtist : 0 });
 
     allPlayers.forEach(p => p.type = Player.playerRoles.guesser)
     allPlayers[0].type = Player.playerRoles.artist;
-    Game.changePlayerRole(allPlayers);
+    await Game.changePlayerRole(allPlayers);
   }
 
   end() {

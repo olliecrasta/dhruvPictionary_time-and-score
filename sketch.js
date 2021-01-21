@@ -8,7 +8,6 @@ var notYetArtist;
 var maxCount;
 var maxRounds;
 var maxTime = 30;
-var artistCanvasWidth = 500;
 var database;
 
 
@@ -61,9 +60,12 @@ function mobileAndTabletCheck() {
 };
 
 function draw() {
+  if (gameState !== 2 && form) {
+    form.hideRound2Controls();
+  }
   if (playerCount === maxCount && gameState === 1) {
-    game.nextRound();
     Game.update(2);
+    game.nextRound();
   }
   if (gameState === 2) {
     clear();
@@ -90,13 +92,12 @@ function draw() {
     for (var i = 0; i < touches.length; i++) {
       fill(lineColor[0], lineColor[1], lineColor[2], 150);
       ellipse(touches[i].x, touches[i].y, 50, 50);
-
     }
     fill("white")
     noStroke();
     text("SCORE : "+ player.score,width-100,50)
     text("TIME LEFT : "+ (maxTime-guessTimeElapsed),width-100,100)
-    console.log(maxTime-guessTimeElapsed);
+    // console.log(maxTime-guessTimeElapsed);
     if(maxTime === guessTimeElapsed){
       game.roundTimeup();
     }
@@ -106,13 +107,16 @@ function draw() {
     canvas.hide();
     //game.wait();
     game.end();
-
+    noLoop();
   }
-  if (playerCount > maxCount && maxCount !== 0) {
-    if (form)
-      form.tooManyError();
+  var msg = "";
+  if (gameState === 0) {
+    if (playerCount > maxCount && maxCount !== 0) {
+      if (form)
+        form.tooManyError();
+    }
+    msg = "Enter the data to begin."
   }
-  var msg = "Enter the data to begin."
   if (form) {
     if (!player || player.type === Player.playerRoles.guesser) {
       cursor("not-allowed");
